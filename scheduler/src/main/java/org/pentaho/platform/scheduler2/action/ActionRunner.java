@@ -14,7 +14,7 @@
  * See the GNU Lesser General Public License for more details.
  *
  *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
+ * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
  *
  */
 
@@ -106,7 +106,6 @@ public class ActionRunner implements Callable<Boolean> {
     }
     // sync job params to the action bean
     ActionHarness actionHarness = new ActionHarness( actionBean );
-    boolean updateJob = false;
 
     final Map<String, Object> actionParams = new HashMap<String, Object>();
     actionParams.putAll( params );
@@ -144,7 +143,8 @@ public class ActionRunner implements Callable<Boolean> {
 
       if ( !outputPath.equals( streamProvider.getOutputPath() ) ) {
         streamProvider.setOutputFilePath( outputPath ); // set fallback path
-        updateJob = true; // job needs to be deleted and recreated with the new output path
+        // Job output path requires update. The update triggers a new job that will fulfill the execution.
+        return new ExecutionResult( true, true );
       }
 
       stream = streamProvider.getOutputStream();
@@ -160,8 +160,6 @@ public class ActionRunner implements Callable<Boolean> {
         waitForFileCreated = true;
       }
       actionParams.put( "outputStream", stream );
-      // The lineage_id is only useful for the metadata and not needed at this level see PDI-10171
-      ActionUtil.removeKeyFromMap( actionParams, ActionUtil.QUARTZ_LINEAGE_ID );
       actionHarness.setValues( actionParams );
     }
 
@@ -186,7 +184,7 @@ public class ActionRunner implements Callable<Boolean> {
     }
 
     // Create the ExecutionResult to return the status and whether the update is required or not
-    ExecutionResult executionResult = new ExecutionResult( updateJob, executionStatus );
+    ExecutionResult executionResult = new ExecutionResult( false, executionStatus );
     return executionResult;
   }
 

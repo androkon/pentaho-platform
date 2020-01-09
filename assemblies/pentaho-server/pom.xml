@@ -17,8 +17,51 @@
     <wkhtmltox.version>0.10.0_rc2</wkhtmltox.version>
     <wkhtmltoimage.version>${wkhtmltox.version}-static</wkhtmltoimage.version>
     <resources.directory>${basedir}/src/main/resources</resources.directory>
+    <snowflake-jdbc.version>3.6.28</snowflake-jdbc.version>
+    <!-- Pentaho drivers kar file dependencies versions -->
+    <pentaho-hadoop-shims-cdh61.version>9.0.0.0-SNAPSHOT</pentaho-hadoop-shims-cdh61.version>
+    <pentaho-hadoop-shims-hdp30.version>9.0.0.0-SNAPSHOT</pentaho-hadoop-shims-hdp30.version>
+    <pentaho-hadoop-shims-emr521.version>9.0.0.0-SNAPSHOT</pentaho-hadoop-shims-emr521.version>
   </properties>
   <dependencies>
+    <!-- START Pentaho drivers kar file dependencies -->
+    <dependency>
+      <groupId>org.pentaho.hadoop.shims</groupId>
+      <artifactId>pentaho-hadoop-shims-cdh61-kar</artifactId>
+      <version>${pentaho-hadoop-shims-cdh61.version}</version>
+      <type>kar</type>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.pentaho.hadoop.shims</groupId>
+      <artifactId>pentaho-hadoop-shims-hdp30-kar</artifactId>
+      <version>${pentaho-hadoop-shims-hdp30.version}</version>
+      <type>kar</type>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.pentaho.hadoop.shims</groupId>
+      <artifactId>pentaho-hadoop-shims-emr521-kar</artifactId>
+      <version>${pentaho-hadoop-shims-emr521.version}</version>
+      <type>kar</type>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- END Pentaho drivers kar file dependencies -->
     <dependency>
       <groupId>pentaho</groupId>
       <artifactId>pentaho-data</artifactId>
@@ -46,7 +89,6 @@
     <dependency>
       <groupId>commons-logging</groupId>
       <artifactId>commons-logging</artifactId>
-      <version>${commons-logging.version}</version>
     </dependency>
     <dependency>
       <groupId>org.hsqldb</groupId>
@@ -71,7 +113,6 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <version>${postgresql.version}</version>
     </dependency>
     <dependency>
       <groupId>wkhtmltopdf</groupId>
@@ -116,7 +157,11 @@
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>apache-log4j-extras</artifactId>
-      <version>${apache-log4j-extras}</version>
+    </dependency>
+    <dependency>
+      <groupId>net.snowflake</groupId>
+      <artifactId>snowflake-jdbc</artifactId>
+      <version>${snowflake-jdbc.version}</version>
     </dependency>
   </dependencies>
   <build>
@@ -181,7 +226,7 @@
             <configuration>
               <file>${tomcat.directory}/conf/server.xml</file>
               <token>&lt;Connector</token>
-              <value>&lt;Connector URIEncoding="UTF-8"</value>
+              <value>&lt;Connector URIEncoding="UTF-8" relaxedPathChars="[]|" relaxedQueryChars="^{}[]|<![CDATA[&amp;]]>" maxHttpHeaderSize="65536"</value>
             </configuration>
           </execution>
         </executions>

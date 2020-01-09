@@ -14,18 +14,21 @@
  * See the GNU Lesser General Public License for more details.
  *
  *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
+ * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
  *
  */
 
 package org.pentaho.platform.plugin.services.importexport;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.CookieHandler;
+import java.net.CookieManager;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -70,13 +73,15 @@ import com.sun.jersey.api.json.JSONConfiguration;
 import com.sun.jersey.core.header.FormDataContentDisposition;
 import com.sun.jersey.multipart.FormDataMultiPart;
 import com.sun.xml.ws.developer.JAXWSProperties;
+import org.pentaho.platform.web.http.security.CsrfToken;
+import org.pentaho.platform.web.http.security.CsrfUtil;
 
 /**
  * Handles the parsing of command line arguments and creates an import process based upon them
  * 
  * @author <a href="mailto:dkincade@pentaho.com">David M. Kincade</a>
  */
-public class CommandLineProcessor {
+public class CommandLineProcessor implements Closeable {
   private static final String API_REPO_FILES_IMPORT = "/api/repo/files/import";
 
   private static final String ANALYSIS_DATASOURCE_IMPORT = "/plugin/data-access/api/mondrian/postAnalysis";
@@ -100,6 +105,8 @@ public class CommandLineProcessor {
   private RequestType requestType;
 
   private IUnifiedRepository repository;
+
+  private CookieHandler defaultCookieHandler;
 
   private static final String INFO_OPTION_HELP_KEY = "h";
   private static final String INFO_OPTION_HELP_NAME = "help";
@@ -265,11 +272,9 @@ public class CommandLineProcessor {
    */
   public static void main( String[] args ) throws Exception {
 
-    try {
+    try ( final CommandLineProcessor commandLineProcessor = new CommandLineProcessor( args ) ) {
       // reset the exception information
       exception = null;
-
-      final CommandLineProcessor commandLineProcessor = new CommandLineProcessor( args );
 
       // new service only
       switch ( commandLineProcessor.getRequestType() ) {
@@ -372,6 +377,12 @@ public class CommandLineProcessor {
    * @throws ParseException
    */
   private void initRestService() throws ParseException, InitializationException, KettleException {
+    // This works well only on a non-multi-threaded environment, as assumed by a CLI tool.
+    // This is used internally by the Client class.
+    defaultCookieHandler = CookieHandler.getDefault();
+    final CookieHandler cookieHandler = new CookieManager();
+    CookieHandler.setDefault( cookieHandler );
+
     ClientConfig clientConfig = new DefaultClientConfig();
     clientConfig.getFeatures().put( JSONConfiguration.FEATURE_POJO_MAPPING, Boolean.TRUE );
     client = Client.create( clientConfig );
@@ -422,6 +433,14 @@ public class CommandLineProcessor {
     }
   }
 
+  @Override
+  public void close() throws IOException {
+    if ( this.defaultCookieHandler != null ) {
+      CookieHandler.setDefault( this.defaultCookieHandler );
+      this.defaultCookieHandler = null;
+    }
+  }
+
   // ========================== Instance Members / Methods
   // ==========================
 
@@ -439,7 +458,8 @@ public class CommandLineProcessor {
    * @throws ParseException
    * @throws IOException
    */
-  private void performMetadataDatasourceImport( String contextURL, File metadataDatasourceFile, String overwrite )
+  private void performMetadataDatasourceImport( String contextURL, File metadataDatasourceFile, String overwrite,
+                                                String logFile, String path )
     throws ParseException, IOException {
     File metadataFileInZip = null;
     InputStream metadataFileInZipInputStream = null;
@@ -494,9 +514,8 @@ public class CommandLineProcessor {
         // Response response
         ClientResponse response = resource.type( MediaType.MULTIPART_FORM_DATA ).post( ClientResponse.class, part );
         if ( response != null ) {
-          String message = response.getEntity( String.class );
-          System.out.println( Messages.getInstance().getString( "CommandLineProcessor.INFO_REST_RESPONSE_RECEIVED",
-              message ) );
+          logImportResponseMessage( logFile, path, response );
+          response.close();
         }
 
       } else {
@@ -513,9 +532,8 @@ public class CommandLineProcessor {
         // Response response
         ClientResponse response = resource.type( MediaType.MULTIPART_FORM_DATA ).post( ClientResponse.class, part );
         if ( response != null ) {
-          String message = response.getEntity( String.class );
-          System.out.println( Messages.getInstance().getString( "CommandLineProcessor.INFO_REST_RESPONSE_RECEIVED",
-              message ) );
+          logImportResponseMessage( logFile, path, response );
+          response.close();
         }
         metadataDatasourceInputStream.close();
       }
@@ -537,9 +555,12 @@ public class CommandLineProcessor {
    * @throws ParseException
    * @throws IOException
    */
-  private void performAnalysisDatasourceImport( String contextURL, File analysisDatasourceFile, String overwrite )
+  private void performAnalysisDatasourceImport( String contextURL, File analysisDatasourceFile, String overwrite,
+                                                String logFile, String path )
     throws ParseException, IOException {
     String analysisImportURL = contextURL + ANALYSIS_DATASOURCE_IMPORT;
+
+    CsrfToken csrfToken = CsrfUtil.getCsrfToken( client, contextURL, analysisImportURL );
 
     String catalogName = getOptionValue( INFO_OPTION_ANALYSIS_CATALOG_NAME, false, true );
     String datasourceName = getOptionValue( INFO_OPTION_ANALYSIS_DATASOURCE_NAME, false, true );
@@ -568,13 +589,16 @@ public class CommandLineProcessor {
     part.getField( "uploadAnalysis" ).setContentDisposition( FormDataContentDisposition.name( "uploadAnalysis" )
         .fileName( analysisDatasourceFile.getName() ).build() );
 
-    // Response response
-    ClientResponse response = resource.type( MediaType.MULTIPART_FORM_DATA ).post( ClientResponse.class, part );
+    WebResource.Builder resourceBuilder = resource.type( MediaType.MULTIPART_FORM_DATA );
+    if ( csrfToken != null ) {
+      resourceBuilder.header( csrfToken.getHeader(), csrfToken.getToken() );
+    }
+
+    ClientResponse response = resourceBuilder.post( ClientResponse.class, part );
+
     if ( response != null ) {
-      String message = response.getEntity( String.class );
+      logImportResponseMessage( logFile, path, response );
       response.close();
-      System.out.println( Messages.getInstance().getString( "CommandLineProcessor.INFO_REST_RESPONSE_RECEIVED",
-          message ) );
     }
     inputStream.close();
     part.cleanup();
@@ -589,6 +613,7 @@ public class CommandLineProcessor {
     String filePath = getOptionValue( INFO_OPTION_FILEPATH_NAME, true, false );
     String datasourceType = getOptionValue( INFO_OPTION_DATASOURCE_TYPE_NAME, true, false );
     String overwrite = getOptionValue( INFO_OPTION_OVERWRITE_NAME, false, true );
+    String logFile = getOptionValue( INFO_OPTION_LOGFILE_NAME, false, true );
 
     /*
      * wrap in a try/finally to ensure input stream is closed properly
@@ -599,9 +624,9 @@ public class CommandLineProcessor {
       File file = new File( filePath );
       if ( datasourceType != null ) {
         if ( datasourceType.equals( DatasourceType.ANALYSIS.name() ) ) {
-          performAnalysisDatasourceImport( contextURL, file, overwrite );
+          performAnalysisDatasourceImport( contextURL, file, overwrite, logFile, filePath );
         } else if ( datasourceType.equals( DatasourceType.METADATA.name() ) ) {
-          performMetadataDatasourceImport( contextURL, file, overwrite );
+          performMetadataDatasourceImport( contextURL, file, overwrite, logFile, filePath );
         }
       }
 
@@ -613,7 +638,7 @@ public class CommandLineProcessor {
   }
 
   /*
-   * --import --url=http://localhost:8080/pentaho - -username=admin --password=password --charset=UTF-8 --path=:public
+   * --import --url=http://localhost:8080/pentaho --username=admin --password=password --charset=UTF-8 --path=/public
    * --file-path=C:/Users/tband/Downloads/pentaho-solutions.zip --logfile=c:/Users/tband/Desktop/logfile.log
    * --permission=true --overwrite=true --retainOwnership=true (required fields- default is false)
    */
@@ -640,6 +665,9 @@ public class CommandLineProcessor {
        */
       try {
         initRestService();
+
+        CsrfToken csrfToken = CsrfUtil.getCsrfToken( client, contextURL, importURL );
+
         WebResource resource = client.resource( importURL );
 
         String overwrite = getOptionValue( INFO_OPTION_OVERWRITE_NAME, false, true );
@@ -660,31 +688,14 @@ public class CommandLineProcessor {
         part.getField( "fileUpload" ).setContentDisposition( FormDataContentDisposition.name( "fileUpload" ).fileName(
             fileIS.getName() ).build() );
 
-        // Response response
-        ClientResponse response = resource.type( MediaType.MULTIPART_FORM_DATA ).post( ClientResponse.class, part );
+        WebResource.Builder resourceBuilder = resource.type( MediaType.MULTIPART_FORM_DATA );
+        if ( csrfToken != null ) {
+          resourceBuilder.header( csrfToken.getHeader(), csrfToken.getToken() );
+        }
+
+        ClientResponse response = resourceBuilder.post( ClientResponse.class, part );
         if ( response != null ) {
-          if ( response.getStatus() == 200 ) {
-            errorMessage = Messages.getInstance().getString( "CommandLineProcessor.INFO_IMPORT_SUCCESSFUL" );
-            System.out.println( errorMessage );
-            return;
-          }
-          if ( response.getStatus() == 403 ) {
-            errorMessage = Messages.getInstance().getErrorString( "CommandLineProcessor.ERROR_0007_FORBIDDEN", path );
-            System.out.println( errorMessage );
-            return;
-          }
-          if ( response.getStatus() == 404 ) {
-            errorMessage =
-                Messages.getInstance().getErrorString( "CommandLineProcessor.ERROR_0004_UNKNOWN_SOURCE", path );
-            System.out.println( errorMessage );
-            return;
-          }
-          String message = response.getEntity( String.class );
-          System.out.println( Messages.getInstance().getString( "CommandLineProcessor.INFO_REST_RESPONSE_RECEIVED",
-              message ) );
-          if ( logFile != null && !"".equals( logFile ) ) {
-            writeFile( message, logFile );
-          }
+          logImportResponseMessage( logFile, path, response );
           response.close();
         }
       } catch ( Exception e ) {
@@ -697,6 +708,25 @@ public class CommandLineProcessor {
         part.cleanup();
         in.close();
       }
+    }
+  }
+
+  private void logImportResponseMessage( String logFile, String path, ClientResponse response ) {
+    if ( response.getStatus() == ClientResponse.Status.OK.getStatusCode() ) {
+      errorMessage = Messages.getInstance().getString( "CommandLineProcessor.INFO_IMPORT_SUCCESSFUL" );
+    } else if ( response.getStatus() == ClientResponse.Status.FORBIDDEN.getStatusCode() ) {
+      errorMessage = Messages.getInstance().getErrorString( "CommandLineProcessor.ERROR_0007_FORBIDDEN", path );
+    } else if ( response.getStatus() == ClientResponse.Status.NOT_FOUND.getStatusCode() ) {
+      errorMessage =
+          Messages.getInstance().getErrorString( "CommandLineProcessor.ERROR_0004_UNKNOWN_SOURCE", path );
+    }
+    StringBuilder message = new StringBuilder( errorMessage );
+    message.append( System.getProperty( "line.separator" ) );
+    message.append( Messages.getInstance().getString( "CommandLineProcessor.INFO_REST_RESPONSE_RECEIVED",
+      response.getEntity( String.class ) ) );
+    System.out.println( message.toString() );
+    if ( logFile != null && !"".equals( logFile ) ) {
+      writeFile( message.toString(), logFile );
     }
   }
 

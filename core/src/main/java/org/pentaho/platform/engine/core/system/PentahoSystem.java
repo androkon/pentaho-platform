@@ -14,7 +14,7 @@
  * See the GNU General Public License for more details.
  *
  *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
+ * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
  *
  */
 
@@ -91,8 +91,9 @@ public class PentahoSystem {
   public static final boolean trace = false;
 
   public static final boolean ignored = false; // used to suppress compiler
-  private static final String securityContextHolderStrategy =
-    SecurityContextHolder.MODE_INHERITABLETHREADLOCAL;
+
+  private static final String securityContextHolderStrategy = SecurityContextHolder.MODE_INHERITABLETHREADLOCAL;
+
   public static final String JAVA_SYSTEM_PROPERTIES = "java-system-properties";
 
   public static int loggingLevel = ILogger.ERROR;
@@ -134,6 +135,8 @@ public class PentahoSystem {
   public static final String CORS_REQUESTS_ALLOWED = "cors-requests-allowed";
 
   public static final String CORS_REQUESTS_ALLOWED_DOMAINS = "cors-requests-allowed-domains";
+
+  public static final String CSRF_PROTECTION_ENABLED = "csrf-protection-enabled";
 
   private static Map globalAttributes;
 
@@ -198,6 +201,9 @@ public class PentahoSystem {
   private static final List logoutListeners = Collections.synchronizedList( new ArrayList() );
 
   private static final IServerStatusProvider serverStatusProvider = IServerStatusProvider.LOCATOR.getProvider();
+
+  public static final String HIDE_USER_HOME_FOLDER_ON_CREATION_PROPERTY =
+    "system.hideUserHomeFolderOnCreate";
 
   // TODO even if logging is not configured messages need to make it out to
   // the console
@@ -1175,6 +1181,12 @@ public class PentahoSystem {
       cacheManager.removeFromGlobalCache( WAIT_SECONDS );
     }
   }
+
+  // region Specific System Settings
+  public static boolean isCsrfProtectionEnabled() {
+    return Boolean.valueOf( PentahoSystem.getSystemSetting( CSRF_PROTECTION_ENABLED, "false" ) );
+  }
+  // endregion
 
   // TODO: shouldn't this be called execute or something like that?
   public static String publish( final IPentahoSession session, final String className ) {

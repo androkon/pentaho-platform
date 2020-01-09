@@ -14,7 +14,7 @@
  * See the GNU Lesser General Public License for more details.
  *
  *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
+ * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
  *
  */
 
@@ -54,12 +54,15 @@ public class JAXRSPluginServlet extends SpringServlet implements ApplicationCont
   private static final long serialVersionUID = 457538570048660945L;
   private static final String APPLICATION_WADL = "application.wadl";
 
+  static final int UNDER_KNOWN_ERROR_RANGE = 399;
+  static final int OVER_KNOWN_ERROR_RANGE = 600;
+
   // Matches: application.wadl, application.wadl/xsd0.xsd
   // Does not match: application.wadl/.xsd, application.wadl/xsd0/xsd0.xsd, application.wadl/a.xml
   private static final Pattern WADL_PATTERN = Pattern.compile( "(.*)" + APPLICATION_WADL + "(/[A-Za-z0-9_]+(.xsd)+)*" );
 
   private ApplicationContext applicationContext;
-  
+
   public static final ThreadLocal requestThread = new ThreadLocal();
 
   private static final Log logger = LogFactory.getLog( JAXRSPluginServlet.class );
@@ -113,6 +116,13 @@ public class JAXRSPluginServlet extends SpringServlet implements ApplicationCont
       }
     }
     super.service( request, response );
+
+    // JAX-RS Response return objects do not trigger the "error state" in the HttpServletResponse
+    // Forcing all HTTP Error Status into "sendError" enables the configuration of custom error
+    // pages in web.xml.
+    if ( !response.isCommitted() && response.getStatus() > UNDER_KNOWN_ERROR_RANGE && response.getStatus() < OVER_KNOWN_ERROR_RANGE ) {
+      response.sendError( response.getStatus() );
+    }
   }
 
   @Override
@@ -129,10 +139,8 @@ public class JAXRSPluginServlet extends SpringServlet implements ApplicationCont
     super.initiate( rc, wa );
   }
 
-  protected ResourceConfig getDefaultResourceConfig( Map<String, Object> props, WebConfig webConfig ) 
-      throws ServletException{
-    props.put( "com.sun.jersey.config.property.WadlGeneratorConfig", 
-        "org.pentaho.platform.web.servlet.PentahoWadlGeneratorConfig" );
+  protected ResourceConfig getDefaultResourceConfig( Map<String, Object> props, WebConfig webConfig ) throws ServletException {
+    props.put( "com.sun.jersey.config.property.WadlGeneratorConfig", "org.pentaho.platform.web.servlet.PentahoWadlGeneratorConfig" );
     return super.getDefaultResourceConfig( props, webConfig );
   }
 }

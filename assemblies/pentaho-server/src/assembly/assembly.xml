@@ -9,7 +9,31 @@
   </formats>
   <baseDirectory>pentaho-server</baseDirectory>
 
+  <!-- Add shim drivers README file -->
+  <files>
+    <file>
+      <source>${project.basedir}/src/main/resources/drivers/README</source>
+      <outputDirectory>./pentaho-solutions/drivers</outputDirectory>
+    </file>
+  </files>
   <fileSets>
+    <fileSet>
+      <directory>${project.basedir}/src/main/resources-filtered</directory>
+      <outputDirectory>.</outputDirectory>
+      <filtered>true</filtered>
+      <includes>
+        <include>**/*.sh</include>
+      </includes>
+      <fileMode>0755</fileMode>
+    </fileSet>
+    <fileSet>
+      <directory>${project.basedir}/src/main/resources-filtered</directory>
+      <outputDirectory>.</outputDirectory>
+      <filtered>true</filtered>
+      <excludes>
+        <exclude>**/*.sh</exclude>
+      </excludes>
+    </fileSet>
     <fileSet>
       <directory>${resources.directory}/biserver</directory>
       <outputDirectory>.</outputDirectory>
@@ -57,6 +81,17 @@
   </fileSets>
 
   <dependencySets>
+    <!-- default driver kar set -->
+    <dependencySet>
+      <includes>
+        <include>*:pentaho-hadoop-shims-cdh61-kar:*</include>
+        <include>*:pentaho-hadoop-shims-hdp30-kar:*</include>
+        <include>*:pentaho-hadoop-shims-emr521-kar:*</include>
+      </includes>
+      <outputDirectory>./pentaho-solutions/drivers</outputDirectory>
+      <useTransitiveDependencies>false</useTransitiveDependencies>
+      <useProjectArtifact>false</useProjectArtifact>
+    </dependencySet>
     <!-- copy platform artifacts -->
     <dependencySet>
       <unpack>true</unpack>

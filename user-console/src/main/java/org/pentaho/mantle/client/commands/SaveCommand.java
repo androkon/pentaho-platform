@@ -14,32 +14,28 @@
  * See the GNU Lesser General Public License for more details.
  *
  *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
+ * Copyright (c) 2002 - 2020 Hitachi Vantara. All rights reserved.
  *
  */
-
 package org.pentaho.mantle.client.commands;
 
+import com.google.gwt.core.client.JavaScriptException;
 import org.pentaho.gwt.widgets.client.dialogs.IDialogCallback;
 import org.pentaho.gwt.widgets.client.dialogs.PromptDialogBox;
 import org.pentaho.gwt.widgets.client.filechooser.FileChooser.FileChooserMode;
 import org.pentaho.gwt.widgets.client.filechooser.FileChooserDialog;
 import org.pentaho.gwt.widgets.client.filechooser.FileChooserListener;
 import org.pentaho.gwt.widgets.client.filechooser.RepositoryFile;
-import org.pentaho.gwt.widgets.client.filechooser.RepositoryFileTree;
 import org.pentaho.gwt.widgets.client.tabs.PentahoTab;
 import org.pentaho.gwt.widgets.client.utils.string.StringUtils;
 import org.pentaho.mantle.client.MantleApplication;
-import org.pentaho.mantle.client.dialogs.WaitPopup;
 import org.pentaho.mantle.client.messages.Messages;
 import org.pentaho.mantle.client.objects.SolutionFileInfo;
-import org.pentaho.mantle.client.solutionbrowser.RepositoryFileTreeManager;
 import org.pentaho.mantle.client.solutionbrowser.SolutionBrowserPanel;
 import org.pentaho.mantle.client.solutionbrowser.tabs.IFrameTabPanel;
 
 import com.google.gwt.core.client.JsArrayString;
 import com.google.gwt.user.client.Window;
-import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.google.gwt.user.client.ui.Label;
 
 public class SaveCommand extends AbstractCommand {
@@ -49,8 +45,9 @@ public class SaveCommand extends AbstractCommand {
   private String path;
   private SolutionFileInfo.Type type;
   private String tabName;
-  private String solution;
-  private final String spinnerId = "SaveCommand";
+
+  // Needs to be a class field so that it can be called from JavaScript.
+  private CommandResultCallback performOperationCallback;
 
   public SaveCommand() {
   }
@@ -64,127 +61,171 @@ public class SaveCommand extends AbstractCommand {
   }
 
   protected void performOperation( boolean feedback ) {
+    performOperationAsync( feedback, null );
+  }
+
+  protected void performOperationAsync( boolean feedback, final CommandResultCallback callback ) {
+
     final SolutionBrowserPanel navigatorPerspective = SolutionBrowserPanel.getInstance();
 
     retrieveCachedValues( navigatorPerspective.getContentTabPanel().getCurrentFrame() );
-    boolean forceReload = false;
-    if ( FileChooserDialog.getIsDirty() ) {
-      forceReload = true;
-      WaitPopup.getInstance().setVisibleById( true, spinnerId );
-      FileChooserDialog.setIsDirty( Boolean.FALSE );
-    }
-    RepositoryFileTreeManager.getInstance().fetchRepositoryFileTree( new AsyncCallback<RepositoryFileTree>() {
-      public void onFailure( Throwable caught ) {
+
+    if ( isSaveAs || name == null ) {
+      String fileDir = "";
+      if ( path != null && !StringUtils.isEmpty( path ) ) {
+        // If has extension
+        if ( path.endsWith( name ) ) {
+          fileDir = path.substring( 0, path.lastIndexOf( "/" ) );
+        } else {
+          fileDir = path;
+        }
       }
 
-      public void onSuccess( RepositoryFileTree tree ) {
+      final String okButtonText = Messages.getString( "save" );
+      final String operationText = isSaveAs ? Messages.getString( "saveAs" ) : Messages.getString( "save" );
+      final boolean showHiddenFiles = navigatorPerspective.getSolutionTree().isShowHiddenFiles();
 
-        retrieveCachedValues( navigatorPerspective.getContentTabPanel().getCurrentFrame() );
-        if ( isSaveAs || name == null ) {
-          String fileDir = "";
-          if ( path != null && !StringUtils.isEmpty( path ) ) {
-            // If has extension
-            if ( path.endsWith( name ) ) {
-              fileDir = path.substring( 0, path.lastIndexOf( "/" ) );
-            } else {
-              fileDir = path;
-            }
+      final FileChooserDialog dialog = new FileChooserDialog( FileChooserMode.SAVE,
+        fileDir, null, false, true, operationText, okButtonText, showHiddenFiles );
 
+      dialog.setSubmitOnEnter( MantleApplication.submitOnEnter );
+      dialog.setTitle( operationText );
+
+      dialog.addFileChooserListener( new FileChooserListener() {
+        @Override
+        public void dialogCanceled() {
+          if ( callback != null ) {
+            callback.onCanceled();
           }
-          WaitPopup.getInstance().setVisibleById( false, spinnerId );
-          final FileChooserDialog dialog =
-            new FileChooserDialog(
-              FileChooserMode.SAVE,
-              fileDir,
-              tree,
-              false,
-              true,
-              Messages.getString( "save" ), Messages.getString( "save" ), navigatorPerspective.getSolutionTree().isShowHiddenFiles() ); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-          dialog.setSubmitOnEnter( MantleApplication.submitOnEnter );
-          if ( isSaveAs ) {
-            dialog.setTitle( Messages.getString( "saveAs" ) ); //$NON-NLS-1$
-            dialog.setText( Messages.getString( "saveAs" ) ); //$NON-NLS-1$
-          } else {
-            dialog.setTitle( Messages.getString( "save" ) ); //$NON-NLS-1$
-            dialog.setText( Messages.getString( "save" ) ); //$NON-NLS-1$
+        }
+
+        @Override
+        public void fileSelected( final RepositoryFile file, String filePath, String fileName, String title ) {
+          SaveCommand.this.type = SolutionFileInfo.Type.XACTION;
+          SaveCommand.this.name = fileName;
+          SaveCommand.this.path = filePath;
+
+          tabName = name;
+
+          if ( tabName.indexOf( "analysisview.xaction" ) != -1 ) {
+            // trim off the analysisview.xaction from the localized-name
+            tabName = tabName.substring( 0, tabName.indexOf( "analysisview.xaction" ) - 1 );
           }
-          // TODO Uncomment the line below and delete the line after that once gwtwidets have been branched
-          dialog.addFileChooserListener( new FileChooserListener() {
 
-            public void dialogCanceled() {
+          JsArrayString extensions = getPossibleExtensions(
+            navigatorPerspective.getContentTabPanel().getCurrentFrameElementId() );
 
-            }
+          final String fileExtension = extensions.length() == 1 ? extensions.get( 0 ) : null;
 
-            @Override
-            public void fileSelected( final RepositoryFile file, String filePath, String fileName, String title ) {
-              SaveCommand.this.type = SolutionFileInfo.Type.XACTION;
-              SaveCommand.this.name = fileName;
-              SaveCommand.this.path = filePath;
-              tabName = name;
-              if ( tabName.indexOf( "analysisview.xaction" ) != -1 ) {
-                // trim off the analysisview.xaction from the localized-name
-                tabName = tabName.substring( 0, tabName.indexOf( "analysisview.xaction" ) - 1 );
-              }
+          if ( dialog.doesSelectedFileExist( fileExtension ) ) {
+            dialog.hide();
 
-              JsArrayString extensions =
-                getPossibleExtensions( navigatorPerspective.getContentTabPanel().getCurrentFrameElementId() );
-              final String fileExtension = extensions.length() == 1 ? extensions.get( 0 ) : null;
+            PromptDialogBox overWriteDialog = new PromptDialogBox(
+              Messages.getString( "question" ), Messages.getString( "yes" ), Messages.getString( "no" ),
+              false, true
+            );
 
-              if ( dialog.doesSelectedFileExist( fileExtension ) ) {
-                dialog.hide();
-                PromptDialogBox overWriteDialog =
-                  new PromptDialogBox(
-                    Messages.getString( "question" ), Messages.getString( "yes" ), Messages.getString( "no" ), //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-                    false, true );
-                overWriteDialog.setContent( new Label( Messages.getString( "fileExistsOverwrite" ), false ) ); //$NON-NLS-1$
-                overWriteDialog.setCallback( new IDialogCallback() {
-                  public void okPressed() {
-                    if ( fileExtension != null && tabName.endsWith( fileExtension ) ) {
-                      tabName = tabName.substring( 0, tabName.lastIndexOf( fileExtension ) );
-                    }
-                    doSaveAs( navigatorPerspective.getContentTabPanel().getCurrentFrameElementId(), name, path, type,
-                      true );
-                    Window.setTitle( Messages.getString( "productName" ) + " - " + name ); //$NON-NLS-1$ //$NON-NLS-2$
-                    FileChooserDialog.setIsDirty( Boolean.TRUE );
-                    persistFileInfoInFrame();
-                  }
+            overWriteDialog.setContent( new Label( Messages.getString( "fileExistsOverwrite" ), false ) );
+            overWriteDialog.setCallback( new IDialogCallback() {
+              public void okPressed() {
+                // Save as, overwriting existing file.
 
-                  public void cancelPressed() {
-                    dialog.show();
-                  }
-                } );
-                overWriteDialog.center();
-              } else {
-
-                // [Fix for PIR-833]
-                if ( file != null && !file.isFolder() && !fileName.equals( title )
-                  && filePath.endsWith( file.getName() ) ) {
-                  SaveCommand.this.path = filePath.substring( 0, filePath.lastIndexOf( "/" + file.getName() ) );
+                if ( fileExtension != null && tabName.endsWith( fileExtension ) ) {
+                  tabName = tabName.substring( 0, tabName.lastIndexOf( fileExtension ) );
                 }
 
-                doSaveAs( navigatorPerspective.getContentTabPanel().getCurrentFrameElementId(), name, path, type, true );
-                Window.setTitle( Messages.getString( "productName" ) + " - " + name ); //$NON-NLS-1$ //$NON-NLS-2$
+                final CommandResultCallback composedCallback = composeCallbacks( new CommandResultCallback() {
+                  @Override
+                  public void onSuccess() {
+                    Window.setTitle( Messages.getString( "productName" ) + " - " + name );
+                    persistFileInfoInFrame();
+                    // Shouldn't clearValues() be called like in the other cases?
+                  }
+
+                  @Override
+                  public void onCanceled() {
+                    // Shouldn't clearValues() be called like in the other cases?
+                  }
+
+                  @Override
+                  public void onError( Throwable error ) {
+                    // Shouldn't clearValues() be called like in the other cases?
+                  }
+                }, callback );
+
+                doSaveAs( navigatorPerspective.getContentTabPanel().getCurrentFrameElementId(),
+                  name, path, type, true, composedCallback );
+              }
+
+              public void cancelPressed() {
+                // Let the user choose another file name, then.
+                dialog.show();
+              }
+            } );
+
+            overWriteDialog.center();
+          } else {
+            // Save as a new file.
+
+            // [Fix for PIR-833]
+            if ( file != null && !file.isFolder() && !fileName.equals( title )
+              && filePath.endsWith( file.getName() ) ) {
+              SaveCommand.this.path = filePath.substring( 0, filePath.lastIndexOf( "/" + file.getName() ) );
+            }
+
+            final CommandResultCallback composedCallback = composeCallbacks( new CommandResultCallback() {
+              @Override
+              public void onSuccess() {
+                Window.setTitle( Messages.getString( "productName" ) + " - " + name );
                 persistFileInfoInFrame();
-                // navigatorPerspective.addRecent(fullPathWithName, name);
                 clearValues();
               }
-            }
 
-            @Override
-            public void fileSelectionChanged( RepositoryFile file, String filePath, String fileName, String title ) {
-              // TODO Auto-generated method stub
+              @Override
+              public void onCanceled() {
+                clearValues();
+              }
 
-            }
+              @Override
+              public void onError( Throwable error ) {
+                clearValues();
+              }
+            }, callback );
 
-          } );
-          dialog.center();
-        } else {
-          doSaveAs( navigatorPerspective.getContentTabPanel().getCurrentFrameElementId(), name, path, type, true );
+            doSaveAs( navigatorPerspective.getContentTabPanel().getCurrentFrameElementId(),
+              name, path, type, true, composedCallback );
+          }
+        }
+
+        @Override
+        public void fileSelectionChanged( RepositoryFile file, String filePath, String fileName, String title ) {
+          // NOOP
+        }
+      } );
+
+      dialog.center();
+    } else {
+      // Save an existing file.
+      final CommandResultCallback composedCallback = composeCallbacks( new CommandResultCallback() {
+        @Override
+        public void onSuccess() {
           clearValues();
         }
-        WaitPopup.getInstance().setVisibleById( false, spinnerId );
-      }
-    }, forceReload, null, null, SolutionBrowserPanel.getInstance().getSolutionTree().isShowHiddenFiles() );
+
+        @Override
+        public void onCanceled() {
+          clearValues();
+        }
+
+        @Override
+        public void onError( Throwable error ) {
+          clearValues();
+        }
+      }, callback );
+
+      doSaveAs( navigatorPerspective.getContentTabPanel().getCurrentFrameElementId(), name, path, type,
+          true, composedCallback );
+    }
   }
 
   /**
@@ -208,9 +249,11 @@ public class SaveCommand extends AbstractCommand {
 
   private void persistFileInfoInFrame() {
     SolutionFileInfo fileInfo = new SolutionFileInfo();
+
     fileInfo.setName( this.name );
     fileInfo.setPath( this.path );
     fileInfo.setType( this.type );
+
     SolutionBrowserPanel.getInstance().getContentTabPanel().getCurrentFrame().setFileInfo( fileInfo );
   }
 
@@ -222,6 +265,7 @@ public class SaveCommand extends AbstractCommand {
 
   private void retrieveCachedValues( IFrameTabPanel tabPanel ) {
     clearValues();
+
     SolutionFileInfo info = tabPanel.getFileInfo();
     if ( info != null ) {
       this.name = info.getName();
@@ -231,14 +275,15 @@ public class SaveCommand extends AbstractCommand {
   }
 
   private void doSaveAs( String elementId, String filename, String path, SolutionFileInfo.Type type, boolean overwrite,
-    boolean showBusy ) {
-    WaitPopup.getInstance().setVisible( true );
-    this.doSaveAs( elementId, filename, path, type, overwrite );
-    WaitPopup.getInstance().setVisible( false );
-    FileChooserDialog.setIsDirty( Boolean.TRUE );
-  }
+                        final CommandResultCallback callback ) {
 
-  private void doSaveAs( String elementId, String filename, String path, SolutionFileInfo.Type type, boolean overwrite ) {
+    // JSNI can only call methods on class fields.
+    performOperationCallback = wrapCallbackWithFinally( callback, new Runnable() {
+      @Override
+      public void run() {
+        performOperationCallback = null;
+      }
+    });
 
     String unableToSaveMessage = Messages.getString( "unableToSaveMessage" );
     String save = Messages.getString( "save" );
@@ -251,7 +296,7 @@ public class SaveCommand extends AbstractCommand {
 
   /**
    * This method will call saveReportSpecAs(string filename, string solution, string path, bool overwrite)
-   * 
+   *
    * @param save
    *          - externalize message save
    * @param unableToSaveMessage
@@ -265,48 +310,118 @@ public class SaveCommand extends AbstractCommand {
     SolutionFileInfo.Type type, boolean overwrite, String save, String unableToSaveMessage, String error,
     String errorEncounteredWhileSaving )
   /*-{
-    var isSavedSuccessfully = true;
-    var errorCallback = function() {
-      window.parent.mantle_showMessage(save, unableToSaveMessage);
-      isSavedSuccessfully = false;
-    }
-
     var frame = $doc.getElementById(elementId);
     frame = frame.contentWindow;
     frame.focus();
 
-    if(frame.pivot_initialized) {
+    if (frame.pivot_initialized) {
       // do jpivot save
       var actualFileName = filename;
-      if (filename.indexOf("analysisview.xaction") == -1) {
+      if (filename.indexOf("analysisview.xaction") === -1) {
         actualFileName = filename + ".analysisview.xaction";
       } else {
         // trim off the analysisview.xaction from the localized-name
         filename = filename.substring(0, filename.indexOf("analysisview.xaction")-1);
       }
       frame.controller.saveAs(actualFileName, filename, path, overwrite);
+      $wnd.mantle_setIsRepoDirty(true);
+      $wnd.mantle_isBrowseRepoDirty=true;
+
+      //CHECKSTYLE IGNORE LineLength FOR NEXT 1 LINES
+      this.@org.pentaho.mantle.client.commands.SaveCommand::performOperationCallbackSuccess()();
+
     } else if (frame.handle_puc_save) {
+      var isSavedSuccessfully = true;
+      var that = this;
+
+      var finallyCallback = function() {
+        $wnd.mantle_setIsRepoDirty(true);
+        $wnd.mantle_isBrowseRepoDirty = true;
+      };
+
+      var errorCallback = function(e) {
+        innerErrorCallback(e, save, unableToSaveMessage);
+      };
+
+      var innerErrorCallback = function(e, errorTitle, errorDetailMessage) {
+
+        window.parent.mantle_showMessage(errorTitle, errorDetailMessage);
+
+        isSavedSuccessfully = false;
+
+        finallyCallback();
+
+        if (!(e instanceof Error)) {
+          // Must be an Error instance, for JSNI interop to work.
+          e = new Error(errorDetailMessage);
+        }
+
+        //CHECKSTYLE IGNORE LineLength FOR NEXT 1 LINES
+        that.@org.pentaho.mantle.client.commands.SaveCommand::performOperationCallbackError(Lcom/google/gwt/core/client/JavaScriptException;)(e);
+      };
+
+      var canceledCallback = function() {
+
+        isSavedSuccessfully = false;
+
+        finallyCallback();
+
+        //CHECKSTYLE IGNORE LineLength FOR NEXT 1 LINES
+        that.@org.pentaho.mantle.client.commands.SaveCommand::performOperationCallbackCanceled()();
+      };
+
+      var successCallback = function(result) {
+        // We need to decode the result,
+        // but we double encoded '/' and '\' in URLEncoder.js to work around a Tomcat issue.
+        var almostDecodedResult = result.replace(/%255C/g, "%5C").replace(/%252F/g, "%2F");
+
+        // Now we decode.
+        var decodedResult = decodeURIComponent(almostDecodedResult);
+
+        that.@org.pentaho.mantle.client.commands.SaveCommand::doTabRename()();
+
+        //CHECKSTYLE IGNORE LineLength FOR NEXT 2 LINES
+        that.@org.pentaho.mantle.client.commands.SaveCommand::addToRecentList(Ljava/lang/String;)(decodedResult);
+        that.@org.pentaho.mantle.client.commands.SaveCommand::setDeepLinkUrl(Ljava/lang/String;)(decodedResult);
+
+        finallyCallback();
+
+        //CHECKSTYLE IGNORE LineLength FOR NEXT 1 LINES
+        that.@org.pentaho.mantle.client.commands.SaveCommand::performOperationCallbackSuccess()();
+      };
+
       try {
-        var result = frame.handle_puc_save(path, filename, overwrite, errorCallback);
-        if (isSavedSuccessfully){
-          //We need to decode the result, but we double encoded '/' and '\' in URLEncoder.js to work around a Tomcat issue
-          var almostDecodedResult = result.replace(/%255C/g, "%5C").replace(/%252F/g, "%2F");
-          //Now we decode
-          var decodedResult = decodeURIComponent(almostDecodedResult);
-          this.@org.pentaho.mantle.client.commands.SaveCommand::doTabRename()();
-          //CHECKSTYLE IGNORE LineLength FOR NEXT 2 LINES
-          this.@org.pentaho.mantle.client.commands.SaveCommand::addToRecentList(Ljava/lang/String;)(decodedResult);
-          this.@org.pentaho.mantle.client.commands.SaveCommand::setDeepLinkUrl(Ljava/lang/String;)(decodedResult);
-        }        
-      } catch (e) {
-        $wnd.mantle_showMessage(error, errorEncounteredWhileSaving + e);
+        var result = frame.handle_puc_save(path, filename, overwrite, errorCallback, canceledCallback);
+        if (isSavedSuccessfully) {
+          if(result && typeof result.then === "function") {
+            // Assume it is a Promise. Not really saved yet. Wait for the result.
+            result.then(successCallback, function(error) {
+                if(error == null) {
+                  // Promise.reject() to cancel.
+                  canceledCallback();
+                } else {
+                  // Promise.reject(new Error(...)) to signal a real error.
+                  errorCallback(error);
+                }
+            });
+          } else {
+            // Legacy code path.
+            // Assume the result is the string with the actual path used.
+            successCallback(result);
+          }
+        } // otherwise, either errorCallback or canceledCallback were already called.
+      } catch(e) {
+        innerErrorCallback(e, error, errorEncounteredWhileSaving + e);
       }
     } else {
+      var msgDetailNotImplemented =
+          "The plugin has not defined a handle_puc_save function to handle the save of the content";
+
+      $wnd.mantle_showMessage(error, msgDetailNotImplemented);
+
       //CHECKSTYLE IGNORE LineLength FOR NEXT 1 LINES
-      $wnd.mantle_showMessage(error,"The plugin has not defined a handle_puc_save function to handle the save of the content");
+      this.@org.pentaho.mantle.client.commands.SaveCommand::performOperationCallbackError(Lcom/google/gwt/core/client/JavaScriptException;)(new Error(msgDetailNotImplemented));
     }
-    $wnd.mantle_setIsRepoDirty(true);
-    $wnd.mantle_isBrowseRepoDirty=true;
   }-*/;
 
   // used via JSNI
@@ -330,4 +445,104 @@ public class SaveCommand extends AbstractCommand {
     SolutionBrowserPanel.getInstance().setDeepLinkUrl( fullPathWithName );
   }
 
+  /**
+   * Enables calling the performOperationCallback's onSuccess method from JSNI.
+   *
+   * Used via JSNI.
+   */
+  private void performOperationCallbackSuccess() {
+    if ( performOperationCallback != null ) {
+      performOperationCallback.onSuccess();
+    }
+  }
+
+  /**
+   * Enables calling the performOperationCallback's onCanceled method from JSNI.
+   *
+   * Used via JSNI.
+   */
+  private void performOperationCallbackCanceled() {
+    if ( performOperationCallback != null ) {
+      performOperationCallback.onCanceled();
+    }
+  }
+
+  /**
+   * Enables calling the performOperationCallback's onError method from JSNI.
+   *
+   * Used via JSNI.
+   * @param error - The error.
+   */
+  private void performOperationCallbackError( JavaScriptException error) {
+    if ( performOperationCallback != null ) {
+      performOperationCallback.onError( error );
+    }
+  }
+
+  private CommandResultCallback wrapCallbackWithFinally(
+      final CommandResultCallback callback,
+      final Runnable finallyCleanup ) {
+
+    return new CommandResultCallback() {
+      @Override
+      public void onSuccess() {
+        finallyCleanup.run();
+
+        if ( callback != null ) {
+          callback.onSuccess();
+        }
+      }
+
+      @Override
+      public void onCanceled() {
+        finallyCleanup.run();
+
+        if ( callback != null ) {
+          callback.onCanceled();
+        }
+      }
+
+      @Override
+      public void onError(Throwable error) {
+        finallyCleanup.run();
+
+        if ( callback != null ) {
+          callback.onError( error );
+        }
+      }
+    };
+  }
+
+  private CommandResultCallback composeCallbacks(
+      final CommandResultCallback callbackA,
+      final CommandResultCallback callbackB ) {
+
+    if ( callbackA == null ) {
+      return callbackB;
+    }
+
+    if ( callbackB == null ) {
+      return callbackA;
+    }
+
+    return new CommandResultCallback() {
+      @Override
+      public void onSuccess() {
+        callbackA.onSuccess();
+        callbackB.onSuccess();
+      }
+
+      @Override
+      public void onCanceled() {
+        callbackA.onCanceled();
+        callbackB.onCanceled();
+      }
+
+      @Override
+      public void onError( Throwable error ) {
+        callbackA.onError( error );
+        callbackB.onError( error );
+      }
+    };
+  }
 }

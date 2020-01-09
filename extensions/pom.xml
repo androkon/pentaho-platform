@@ -14,13 +14,11 @@
     <asm-attrs.version>2.2.3</asm-attrs.version>
     <license.header.file>${basedir}/../license/templates/LGPL-2.1.txt</license.header.file>
     <maven-failsafe-plugin.reuseForks>false</maven-failsafe-plugin.reuseForks>
-    <httpclient.version>4.5.3</httpclient.version>
     <nekohtml.version>1.9.15</nekohtml.version>
     <maven-surefire-plugin.reuseForks>false</maven-surefire-plugin.reuseForks>
     <jstl.version>1.0.5</jstl.version>
     <license.header.definition.file>${basedir}/../license/styles/javadoc_style_license_header.xml</license.header.definition.file>
     <hamcrest-library.version>1.3</hamcrest-library.version>
-    <tika-parser.version>1.12</tika-parser.version>
     <commons-xul.version>9.0.0.0-SNAPSHOT</commons-xul.version>
     <pdi.version>9.0.0.0-SNAPSHOT</pdi.version>
     <pentaho-reporting.version>9.0.0.0-SNAPSHOT</pentaho-reporting.version>
@@ -108,32 +106,11 @@
     <dependency>
       <groupId>commons-fileupload</groupId>
       <artifactId>commons-fileupload</artifactId>
-      <version>${commons-fileupload.version}</version>
       <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpclient</artifactId>
-      <version>${httpclient.version}</version>
-      <scope>compile</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>commons-logging</groupId>
       <artifactId>commons-logging</artifactId>
-      <version>${commons-logging.version}</version>
-      <scope>compile</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -186,20 +163,12 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>${slf4j-api.version}</version>
-      <scope>compile</scope>
     </dependency>
+    <!-- Only needed for runtime testing -->
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
-      <version>${slf4j-log4j12.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>jcl-over-slf4j</artifactId>
-      <version>${jcl-over-slf4j.version}</version>
-      <scope>compile</scope>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.xmlgraphics</groupId>
@@ -239,8 +208,15 @@
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
+      <artifactId>spring-tx</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
       <artifactId>spring-beans</artifactId>
-      <version>${spring.framework.version}</version>
       <scope>compile</scope>
       <exclusions>
         <exclusion>
@@ -252,7 +228,6 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-context</artifactId>
-      <version>${spring.framework.version}</version>
       <scope>compile</scope>
       <exclusions>
         <exclusion>
@@ -264,7 +239,6 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-core</artifactId>
-      <version>${spring.framework.version}</version>
       <scope>compile</scope>
       <exclusions>
         <exclusion>
@@ -276,7 +250,6 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>se-jcr</artifactId>
-      <version>${se-jcr.version}</version>
       <scope>compile</scope>
       <exclusions>
         <exclusion>
@@ -352,12 +325,6 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>com.thoughtworks.xstream</groupId>
-      <artifactId>xstream</artifactId>
-      <version>${xstream.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
       <groupId>org.apache.xmlbeans</groupId>
       <artifactId>xmlbeans</artifactId>
       <version>${xmlbeans.version}</version>
@@ -430,7 +397,6 @@
     <dependency>
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-core</artifactId>
-      <version>${spring-security.version}</version> <!-- see maven-parent-pom -->
       <scope>compile</scope>
       <exclusions>
         <exclusion>
@@ -442,7 +408,6 @@
     <dependency>
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-web</artifactId>
-      <version>${spring-security.version}</version>  <!-- see maven-parent-pom -->
       <scope>compile</scope>
       <exclusions>
         <exclusion>
@@ -454,12 +419,10 @@
     <dependency>
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-config</artifactId>
-      <version>${spring-security.version}</version>  <!-- see maven-parent-pom -->
     </dependency>
     <dependency>
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-ldap</artifactId>
-      <version>${spring-security.version}</version>  <!-- see maven-parent-pom -->
       <scope>compile</scope>
       <exclusions>
         <exclusion>
@@ -471,7 +434,6 @@
     <dependency>
       <groupId>org.springframework.ldap</groupId>
       <artifactId>spring-ldap-core</artifactId>
-      <version>${spring-ldap-core.version}</version>
       <scope>compile</scope>
       <exclusions>
         <exclusion>
@@ -481,8 +443,8 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>javax.mail</groupId>
-      <artifactId>mail</artifactId>
+      <groupId>com.sun.mail</groupId>
+      <artifactId>javax.mail</artifactId>
       <version>${mail.version}</version>
       <scope>compile</scope>
       <exclusions>
@@ -982,12 +944,6 @@
       <groupId>com.sun</groupId>
       <artifactId>jai_core</artifactId>
       <version>${jai_core.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>javax.faces</groupId>
-      <artifactId>jsf-api</artifactId>
-      <version>${jsf-api.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -1667,7 +1623,6 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <version>${postgresql.version}</version>
       <scope>provided</scope>
       <exclusions>
         <exclusion>
@@ -2148,28 +2103,10 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>pentaho</groupId>
-      <artifactId>pentaho-platform-build-utils</artifactId>
-      <version>${project.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
       <groupId>annogen</groupId>
       <artifactId>annogen</artifactId>
       <version>${annogen.version}</version>
       <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpcore</artifactId>
-      <version>${httpcore.version}</version>
-      <scope>runtime</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.ws.commons.neethi</groupId>
@@ -2210,66 +2147,15 @@
     <dependency>
       <groupId>org.apache.karaf</groupId>
       <artifactId>org.apache.karaf.main</artifactId>
-      <version>${org.apache.karaf.main.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.karaf.jaas</groupId>
-      <artifactId>org.apache.karaf.jaas.boot</artifactId>
-      <version>${org.apache.karaf.jaas.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.karaf.jaas</groupId>
-      <artifactId>org.apache.karaf.jaas.modules</artifactId>
-      <version>${org.apache.karaf.jaas.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.felix</groupId>
-      <artifactId>org.apache.felix.http.proxy</artifactId>
-      <version>${org.apache.felix.http.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.felix</groupId>
-      <artifactId>org.apache.felix.main</artifactId>
-      <version>${org.apache.felix.main.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.felix</groupId>
-      <artifactId>org.apache.felix.http.base</artifactId>
-      <version>${org.apache.felix.http.version}</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.felix</groupId>
-      <artifactId>org.apache.felix.utils</artifactId>
-      <version>${org.apache.felix.utils.version}</version>
-      <scope>compile</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>org.osgi.core</artifactId>
-          <groupId>org.osgi</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>org.osgi.compendium</artifactId>
-          <groupId>org.osgi</groupId>
-        </exclusion>
-      </exclusions>
+      <groupId>org.osgi</groupId>
+      <artifactId>org.osgi.core</artifactId>
     </dependency>
     <dependency>
       <groupId>org.osgi</groupId>
       <artifactId>org.osgi.compendium</artifactId>
-      <version>${org.osgi.compendium.version}</version>
-      <scope>provided</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.dumbster</groupId>
@@ -2367,7 +2253,16 @@
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-webapp</artifactId>
-      <version>${jetty-webapp.version}</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>*</artifactId>
+          <groupId>*</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-util-ajax</artifactId>
       <exclusions>
         <exclusion>
           <artifactId>*</artifactId>
@@ -2408,7 +2303,6 @@
     <dependency>
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-core-tests</artifactId>
-      <version>${spring-security-core-tests.version}</version>
       <scope>test</scope>
       <exclusions>
         <exclusion>
@@ -2804,13 +2698,11 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-test</artifactId>
-      <version>${spring.framework.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-web</artifactId>
-      <version>${spring.framework.version}</version>
     </dependency>
     <dependency>
       <groupId>com.sun.jersey.contribs</groupId>
@@ -2832,7 +2724,6 @@
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
       <artifactId>jackrabbit-api</artifactId>
-      <version>${jackrabbit.version}</version>
       <scope>compile</scope>
       <exclusions>
         <exclusion>
@@ -2840,36 +2731,6 @@
           <groupId>*</groupId>
         </exclusion>
       </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.jackrabbit</groupId>
-      <artifactId>jackrabbit-core</artifactId>
-      <version>${jackrabbit.version}</version>
-      <scope>compile</scope>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.jackrabbit</groupId>
-      <artifactId>jackrabbit-spi</artifactId>
-      <version>${jackrabbit.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.jackrabbit</groupId>
-      <artifactId>jackrabbit-spi-commons</artifactId>
-      <version>${jackrabbit.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.jackrabbit</groupId>
-      <artifactId>jackrabbit-data</artifactId>
-      <version>${jackrabbit.version}</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.pentaho</groupId>
@@ -2884,17 +2745,6 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.springframework.webflow</groupId>
-      <artifactId>spring-binding</artifactId>
-      <version>${spring-binding.version}</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>ognl</artifactId>
-          <groupId>opensymphony</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
     </dependency>
@@ -2905,12 +2755,6 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.tika</groupId>
-      <artifactId>tika-parsers</artifactId>
-      <version>${tika-parser.version}</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>javax.websocket</groupId>

@@ -14,12 +14,13 @@
  * See the GNU Lesser General Public License for more details.
  *
  *
- * Copyright (c) 2002-2018 Hitachi Vantara. All rights reserved.
+ * Copyright (c) 2002-2019 Hitachi Vantara. All rights reserved.
  *
  */
 
 package org.pentaho.platform.web.http.api.resources;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.gwt.safehtml.shared.SafeHtmlBuilder;
 import com.sun.jersey.multipart.FormDataParam;
 import org.apache.commons.io.IOUtils;
@@ -38,17 +39,21 @@ import org.pentaho.platform.api.engine.IParameterProvider;
 import org.pentaho.platform.api.engine.IPentahoSession;
 import org.pentaho.platform.api.engine.IPluginManager;
 import org.pentaho.platform.api.engine.PentahoAccessControlException;
+import org.pentaho.platform.api.engine.security.userroledao.IUserRoleDao;
 import org.pentaho.platform.api.mimetype.IPlatformMimeResolver;
 import org.pentaho.platform.api.repository2.unified.Converter;
 import org.pentaho.platform.api.repository2.unified.IRepositoryContentConverterHandler;
 import org.pentaho.platform.api.repository2.unified.IRepositoryVersionManager;
 import org.pentaho.platform.api.repository2.unified.IUnifiedRepository;
 import org.pentaho.platform.api.repository2.unified.RepositoryFile;
+import org.pentaho.platform.api.repository2.unified.RepositoryFileSid;
 import org.pentaho.platform.api.repository2.unified.UnifiedRepositoryAccessDeniedException;
+import org.pentaho.platform.api.repository2.unified.webservices.RepositoryFileAclAceDto;
 import org.pentaho.platform.engine.core.output.SimpleOutputHandler;
 import org.pentaho.platform.engine.core.solution.SimpleParameterProvider;
 import org.pentaho.platform.engine.core.system.PentahoSessionHolder;
 import org.pentaho.platform.engine.core.system.PentahoSystem;
+import org.pentaho.platform.engine.core.system.TenantUtils;
 import org.pentaho.platform.plugin.services.importer.PlatformImportException;
 import org.pentaho.platform.plugin.services.importexport.ExportException;
 import org.pentaho.platform.plugin.services.importexport.Exporter;
@@ -66,9 +71,11 @@ import org.pentaho.platform.api.repository2.unified.webservices.StringKeyStringV
 import org.pentaho.platform.security.policy.rolebased.actions.PublishAction;
 import org.pentaho.platform.util.xml.XMLParserFactoryProducer;
 import org.pentaho.platform.web.http.api.resources.services.FileService;
+import org.pentaho.platform.web.http.api.resources.services.UserRoleListService;
 import org.pentaho.platform.web.http.api.resources.utils.FileUtils;
 import org.pentaho.platform.web.http.api.resources.utils.SystemUtils;
 import org.pentaho.platform.web.http.messages.Messages;
+import org.pentaho.platform.web.servlet.HttpMimeTypeListener;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 
 import javax.servlet.http.HttpServletResponse;
@@ -104,6 +111,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.commons.lang.StringUtils.isBlank;
+
 /**
  * This service provides methods for listing, creating, downloading, uploading, and removal of files.
  *
@@ -111,9 +120,8 @@ import java.util.Map;
  */
 @Path ( "/repo/files/" )
 public class FileResource extends AbstractJaxRSResource {
-  public static final String PATH_SEPARATOR = "/"; //$NON-NLS-1$
-
-  public static final String APPLICATION_ZIP = "application/zip"; //$NON-NLS-1$
+  public static final String APPLICATION_ZIP = "application/zip";
+  public static final String REPOSITORY_ADMIN_USERNAME = "pentahoRepoAdmin";
 
   protected static final Log logger = LogFactory.getLog( FileResource.class );
 
@@ -126,6 +134,8 @@ public class FileResource extends AbstractJaxRSResource {
   protected static DefaultUnifiedRepositoryWebService repoWs;
 
   protected static IAuthorizationPolicy policy;
+
+  protected static UserRoleListService userRoleListService;
 
   IRepositoryContentConverterHandler converterHandler;
   Map<String, Converter> converters;
@@ -175,11 +185,11 @@ public class FileResource extends AbstractJaxRSResource {
       wrapper = fileService.systemBackup( userAgent );
       return buildZipOkResponse( wrapper );
     } catch ( IOException e ) {
-      throw new WebApplicationException( Response.Status.INTERNAL_SERVER_ERROR );
+      throw new WebApplicationException( e, Response.Status.INTERNAL_SERVER_ERROR );
     } catch ( ExportException e ) {
-      throw new WebApplicationException( Response.Status.INTERNAL_SERVER_ERROR );
+      throw new WebApplicationException( e, Response.Status.INTERNAL_SERVER_ERROR );
     } catch ( SecurityException e ) {
-      throw new WebApplicationException( Response.Status.FORBIDDEN );
+      throw new WebApplicationException( e, Response.Status.FORBIDDEN );
     }
   }
 
@@ -205,9 +215,9 @@ public class FileResource extends AbstractJaxRSResource {
       fileService.systemRestore( fileUpload, overwriteFile, applyAclSettings, overwriteAclSettings );
       return Response.ok().build();
     } catch ( PlatformImportException e ) {
-      throw new WebApplicationException( Response.Status.INTERNAL_SERVER_ERROR );
+      throw new WebApplicationException( e, Response.Status.INTERNAL_SERVER_ERROR );
     } catch ( SecurityException e ) {
-      throw new WebApplicationException( Response.Status.FORBIDDEN );
+      throw new WebApplicationException( e, Response.Status.FORBIDDEN );
     }
   }
 
@@ -729,9 +739,21 @@ public class FileResource extends AbstractJaxRSResource {
       @ResponseCode ( code = 400, condition = "Failed to save acls due to malformed xml." ),
       @ResponseCode ( code = 500, condition = "Failed to save acls due to another error." ) } )
   public Response setFileAcls( @PathParam ( "pathId" ) String pathId, RepositoryFileAclDto acl ) {
+    /*
+     * [BISERVER-14294] Ensuring the owner is set to a non-null, non-empty string value to prevent any issues
+     * that might cause problems with the repository. Then following it up with a user existence check
+     *
+     * [BISERVER-14356] What we need to check is that the users or roles we are setting permissions to exist,
+     * not just the user setting the permissions (ACL owner).
+     */
     try {
-      fileService.setFileAcls( pathId, acl );
-      return buildOkResponse();
+      if ( usersOrRolesExist( acl ) ) {
+        fileService.setFileAcls( pathId, acl );
+        return buildOkResponse();
+      } else {
+        logger.error( getMessagesInstance().getString( "SystemResource.GENERAL_ERROR" ) );
+        return buildStatusResponse( Response.Status.FORBIDDEN );
+      }
     } catch ( Exception exception ) {
       logger.error( getMessagesInstance().getString( "SystemResource.GENERAL_ERROR" ), exception );
       return buildStatusResponse( Response.Status.INTERNAL_SERVER_ERROR );
@@ -2167,8 +2189,8 @@ public class FileResource extends AbstractJaxRSResource {
       builder = Response.ok( wrapper.getOutputStream(), mediaType );
     }
 
-    return builder.header( "Content-Disposition", "inline; filename=\"" + wrapper.getRepositoryFile().getName() + "\"" )
-        .build();
+    return builder.header( "Content-Disposition", HttpMimeTypeListener.buildContentDispositionValue( wrapper
+        .getRepositoryFile().getName(), false ) ).build();
   }
 
   protected Response buildZipOkResponse( FileService.DownloadFileWrapper wrapper ) {
@@ -2245,6 +2267,45 @@ public class FileResource extends AbstractJaxRSResource {
   protected String getUserHomeFolder() {
     return ClientRepositoryPaths.getUserHomeFolderPath( PentahoSessionHolder.getSession().getName() );
   }
+
+  /**
+   * Checks if the given users and roles exist in the current tenant
+   * @param acl the ACL containing the permissions we want to set
+   * @return true if all users and roles exist, false otherwise
+   */
+  @VisibleForTesting
+  boolean usersOrRolesExist( RepositoryFileAclDto acl ) {
+    // start by checking the ACL owner
+    if ( isBlank( acl.getOwner() ) ) {
+      return false;
+    }
+
+    if ( acl.getOwner().equals( REPOSITORY_ADMIN_USERNAME ) ) {
+      return true; // this is a special case when logged in as 'admin'
+    }
+
+    IUserRoleDao dao = PentahoSystem.get( IUserRoleDao.class );
+
+    if ( dao.getUser( TenantUtils.getCurrentTenant(), acl.getOwner() ) == null ) {
+      return false;
+    }
+
+    // then check the ACL recipients
+    for ( RepositoryFileAclAceDto dto : acl.getAces() ) {
+      if ( isBlank( dto.getRecipient() ) ) {
+        return false;
+      }
+
+      if ( dto.getRecipientType() == RepositoryFileSid.Type.USER.getValue() ) {
+        if ( dao.getUser( TenantUtils.getCurrentTenant(), dto.getRecipient() ) == null ) {
+          return false;
+        }
+      } else if ( dto.getRecipientType() == RepositoryFileSid.Type.ROLE.getValue() ) {
+        if ( dao.getRole( TenantUtils.getCurrentTenant(), dto.getRecipient() ) == null ) {
+          return false;
+        }
+      }
+    }
+    return true; // if all users and roles exist we end up here!
+  }
 }
-
-

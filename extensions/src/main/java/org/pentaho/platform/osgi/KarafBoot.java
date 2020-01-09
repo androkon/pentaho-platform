@@ -114,7 +114,8 @@ public class KarafBoot implements IPentahoSystemListener {
         }
       }
 
-      String root = karafDir.toURI().getPath();
+      // Use getAbsolutePath to prevent invalid path in Windows
+      String root = karafDir.getAbsolutePath();
 
       // See if user specified a karaf folder they would like to use
       String rootCopyFolderString = System.getProperty( PENTAHO_KARAF_ROOT_COPY_DEST_FOLDER );
@@ -196,7 +197,14 @@ public class KarafBoot implements IPentahoSystemListener {
               return false;
             } else if ( symlinks.contains( relativePath ) ) {
               File linkFile = new File( destDir, relativePath );
-              linkFile.getParentFile().mkdirs();
+              try {
+                boolean linkFileDirCreated = linkFile.getParentFile().mkdirs();
+                logger.info(
+                  "link file " + linkFile.getParentFile().getAbsolutePath() + ( linkFileDirCreated ? "created" : "already existed" ) );
+              } catch ( SecurityException exception ) {
+                logger.error( linkFile.getParentFile().getAbsolutePath() + " Access denied." );
+                throw exception;
+              }
               Path link = Paths.get( linkFile.toURI() );
               try {
                 // Try to create a symlink and skip the copy if successful
@@ -204,8 +212,7 @@ public class KarafBoot implements IPentahoSystemListener {
                   return false;
                 }
               } catch ( IOException e ) {
-                logger
-                  .warn( "Unable to create symlink " + linkFile.getAbsolutePath() + " -> " + file.getAbsolutePath() );
+                logger.warn( "Unable to create symlink " + linkFile.getAbsolutePath() + " -> " + file.getAbsolutePath() );
               }
             }
             return true;
@@ -312,7 +319,7 @@ public class KarafBoot implements IPentahoSystemListener {
 
   }
 
-  public static void deleteRecursiveIfExists( File item ) {
+  protected void deleteRecursiveIfExists( File item ) {
     if ( !item.exists() ) {
       return;
     }
@@ -322,7 +329,13 @@ public class KarafBoot implements IPentahoSystemListener {
         deleteRecursiveIfExists( subitem );
       }
     }
-    item.delete();
+    try {
+      if ( !item.delete() ) {
+        logger.warn( item.toURI().toString() + " could not be deleted." );
+      }
+    } catch ( SecurityException exception ) {
+      logger.warn( item.toURI().toString() + " cannot delete file. Access denied." );
+    }
     return;
   }
 
@@ -344,6 +357,7 @@ public class KarafBoot implements IPentahoSystemListener {
     fillMissedSystemProperty( "karaf.startRemoteShell", "true" );
     fillMissedSystemProperty( "karaf.lock", "false" );
     fillMissedSystemProperty( "karaf.etc", root + "/etc" );
+    fillMissedSystemProperty( "karaf.log", solutionRootPath + "/logs" );
 
     // When running in the PDI-Clients there are separate etc directories so that features can be customized for
     // the particular execution needs (Carte, Spoon, Pan, Kitchen)
@@ -368,9 +382,6 @@ public class KarafBoot implements IPentahoSystemListener {
     } else {
       logger.warn( file.toURI().toString() + " file not exist" );
     }
-    // Setting ignoreTCL to true such that the OSGI classloader used to initialize log4j will be the
-    // same one used when instatiating appenders.
-    System.setProperty( "log4j.ignoreTCL", "true" );
   }
 
   /**

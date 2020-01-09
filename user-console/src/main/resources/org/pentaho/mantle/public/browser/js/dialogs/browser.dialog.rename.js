@@ -12,7 +12,7 @@
  * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU Lesser General Public License for more details.
  *
- * Copyright (c) 2002-2017 Hitachi Vantara..  All rights reserved.
+ * Copyright (c) 2002-2019 Hitachi Vantara..  All rights reserved.
  */
 
 define([
@@ -56,7 +56,7 @@ define([
       this.set("name", null);
       this.set("path", null);
     },
-    
+
     renamePath: function (prevName, name) {
 
       // if the value was previously null or being set to null, nothing should happen
@@ -65,7 +65,7 @@ define([
       }
 
       name = name.replace(/^\s+|\s+$/gm,''); // trim
-      
+
       prevName = Encoder.encodeRepositoryPath( prevName);
       // Update the path
       var prevPath = this.get("path");
@@ -75,14 +75,14 @@ define([
       this.set("path", prevPath.replace( Encoder.encodeRepositoryPath( prevName ), Encoder.encodeRepositoryPath( name ) ) );
 
       var me = this;
-      
+
       // Resets the values
       var setPrevVals = function () {
         this.reset();
         this.set("name", prevName);
         this.set("path", prevPath);
       };
-      
+
       var m = invalidCharactersRegExp.exec(name);
       if (m != null) {
 	      var i18n = me.view.options.i18n;
@@ -94,8 +94,8 @@ define([
       }else{
         // api/repo/files/:home:joe:test.xaction/rename?newName=newFileOrFolderName
         BrowserUtils._makeAjaxCall("PUT", "text", BrowserUtils.getUrlBase() + "api/repo/files/" + FileBrowser.encodePathComponents( prevPath ) + "/rename?newName=" + FileBrowser.encodePathComponents( name ), true,
-          function (success) {        
-            // An exception occured        
+          function (success) {
+            // An exception occured
             if (success != "") {
               if (success.indexOf('AccessDeniedException') > -1) {
                 var i18n = me.view.options.i18n;
@@ -107,18 +107,18 @@ define([
               setPrevVals.apply(me);
               return;
             }
-        
+
             // Create path with '/' instead of ':'
             var slashPath = Encoder.decodeRepositoryPath( me.get("path") );
-        
+
             var isFile = slashPath.search("\\.") > -1;
-        
+
             // if possible refresh the solution browser panel
             if (typeof window.parent.mantle_setIsRepoDirty !== "undefined") {
               window.parent.mantle_setIsRepoDirty(true);
               window.parent.mantle_isBrowseRepoDirty=true;
             }
-        
+
             // Refresh file or folder list
             if (isFile) {
               window.parent.mantle_fireEvent('GenericEvent', {'eventSubType': 'RefreshCurrentFolderEvent'});
@@ -128,7 +128,7 @@ define([
                 'stringParam': slashPath
               });
             }
-        
+
             // Reset model variables since the action completed successfully
             me.reset();
             window.parent.executeCommand("RefreshRepositoryCommand");
@@ -151,7 +151,7 @@ define([
     RenameDialog: null,
 
     CannotRenameDialog: null,
-    
+
     RenameHomeDialog: null,
 
     overrideType: "file",
@@ -165,11 +165,20 @@ define([
       var onOverrideOk = function () {
         var showOverrideDialog = !$(this).parents(".pentaho-dialog").find("#do-not-show").prop("checked");
 
-        BrowserUtils._makeAjaxCall("POST", "text", me.model.buildsessionVariableUrl("showOverrideDialog", showOverrideDialog), true);
+        BrowserUtils._makeAjaxCall(
+            "POST",
+            "text",
+            me.model.buildsessionVariableUrl("showOverrideDialog", showOverrideDialog),
+            true,
+            null,
+            null,
+            null,
+            true);
+
         me.model.set("showOverrideDialog", showOverrideDialog);
 
         me.showRenameDialog.apply(me);
-      }
+      };
 
       var onOverrideShow = function () {
         this.$dialog.find("#do-not-show").prop("checked", false);
@@ -348,9 +357,9 @@ define([
     view: null,
 
     init: function (path, overrideType) {
-			
+
       var repoPath = Encoder.encodeRepositoryPath( path );
-      
+
       var name = path.split("/")[path.split("/").length - 1];
       if ( overrideType !== "folder") {
     	  var dotIndex = name.lastIndexOf("\.");

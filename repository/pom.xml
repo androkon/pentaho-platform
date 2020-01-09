@@ -13,8 +13,6 @@
   <properties>
     <license.header.file>${basedir}/../license/templates/GPL-2.0.txt</license.header.file>
     <maven-failsafe-plugin.reuseForks>false</maven-failsafe-plugin.reuseForks>
-    <slf4j.version>1.7.7</slf4j.version>
-    <slf4j-log4j12.version>1.7.7</slf4j-log4j12.version>
     <commons-lang.version>2.4</commons-lang.version>
     <maven-surefire-plugin.reuseForks>false</maven-surefire-plugin.reuseForks>
     <license.header.definition.file>${basedir}/../license/styles/javadoc_style_license_header.xml</license.header.definition.file>
@@ -106,13 +104,6 @@
     <dependency>
       <groupId>commons-logging</groupId>
       <artifactId>commons-logging</artifactId>
-      <version>${commons-logging.version}</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -159,8 +150,8 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>javax.mail</groupId>
-      <artifactId>mail</artifactId>
+      <groupId>com.sun.mail</groupId>
+      <artifactId>javax.mail</artifactId>
       <version>${mail.version}</version>
       <exclusions>
         <exclusion>
@@ -172,7 +163,6 @@
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
-      <version>${log4j.version}</version>
       <exclusions>
         <exclusion>
           <artifactId>*</artifactId>
@@ -487,7 +477,6 @@
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
       <artifactId>jackrabbit-core</artifactId>
-      <version>${jackrabbit.version}</version>
       <exclusions>
         <exclusion>
           <artifactId>concurrent</artifactId>
@@ -496,10 +485,6 @@
         <exclusion>
           <artifactId>derby</artifactId>
           <groupId>org.apache.derby</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jackrabbit-data</artifactId>
-          <groupId>org.apache.jackrabbit</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -510,14 +495,19 @@
     </dependency>
     <dependency>
       <groupId>org.apache.jackrabbit</groupId>
-      <artifactId>jackrabbit-data</artifactId>
-      <version>${jackrabbit.version}</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
+      <artifactId>jackrabbit-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.jackrabbit</groupId>
+      <artifactId>jackrabbit-spi</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.jackrabbit</groupId>
+      <artifactId>jackrabbit-spi-commons</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.jackrabbit</groupId>
+      <artifactId>jackrabbit-jcr-commons</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
@@ -533,7 +523,6 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-beans</artifactId>
-      <version>${spring.framework.version}</version>
       <exclusions>
         <exclusion>
           <artifactId>*</artifactId>
@@ -544,18 +533,6 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-context</artifactId>
-      <version>${spring.framework.version}</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-context-support</artifactId>
-      <version>${spring.framework.version}</version>
       <exclusions>
         <exclusion>
           <artifactId>*</artifactId>
@@ -566,29 +543,6 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-core</artifactId>
-      <version>${spring.framework.version}</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-web</artifactId>
-      <version>${spring.framework.version}</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-webmvc</artifactId>
-      <version>${spring.webmvc.version}</version>
       <exclusions>
         <exclusion>
           <artifactId>*</artifactId>
@@ -599,7 +553,6 @@
     <dependency>
       <groupId>org.springframework.webflow</groupId>
       <artifactId>spring-binding</artifactId>
-      <version>${spring-binding.version}</version>
       <exclusions>
         <exclusion>
           <artifactId>ognl</artifactId>
@@ -610,18 +563,6 @@
     <dependency>
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-core</artifactId>
-      <version>${spring-security.version}</version>  <!-- see maven-parent-pom -->
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.security</groupId>
-      <artifactId>spring-security-config</artifactId>
-      <version>${spring-security.version}</version>  <!-- see maven-parent-pom -->
       <exclusions>
         <exclusion>
           <artifactId>*</artifactId>
@@ -731,40 +672,10 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>${slf4j.version}</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>jcl-over-slf4j</artifactId>
-      <version>${slf4j.version}</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
-      <version>${slf4j-log4j12.version}</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>*</artifactId>
-          <groupId>*</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>xml-apis</groupId>
       <artifactId>xml-apis</artifactId>
-      <version>${xml-apis.version}</version>
       <exclusions>
         <exclusion>
           <artifactId>*</artifactId>
@@ -814,6 +725,11 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>org.osgi</groupId>
+      <artifactId>org.osgi.core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>pentaho</groupId>
       <artifactId>pentaho-platform-core</artifactId>
       <version>${project.version}</version>
@@ -859,7 +775,6 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-test</artifactId>
-      <version>${spring.framework.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -906,19 +821,7 @@
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
-      <artifactId>spring-jdbc</artifactId>
-      <version>${spring.framework.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-orm</artifactId>
-      <version>${spring.framework.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework</groupId>
       <artifactId>spring-tx</artifactId>
-      <version>${spring.framework.version}</version>
     </dependency>
     <dependency>
       <groupId>org.testng</groupId>

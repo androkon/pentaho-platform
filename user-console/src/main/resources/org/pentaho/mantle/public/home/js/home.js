@@ -69,7 +69,7 @@ define([
     }
 
     // Handle the new popover menu. If we add another, make generic
-    
+
       createNew.buildContents(createNewConfig, function ($contents) {
         var result = "";
         for (var i = 0; i < $contents.length; i++) {
@@ -84,7 +84,7 @@ define([
         return $('#btnCreateNewContent').html();
       }
     });
-    
+
     // setup a listener to hide popovers when a click happens outside of them
     $('body').on('click', function (e) {
       $('.popover-source').each(function () {
@@ -113,6 +113,12 @@ define([
 
     // show the opened perspective
     var extension = path.split(".").pop();
+    var hasPlugin = window.parent.PluginOptionHelper_hasPlugin(path);
+    if (window.parent.mantle_isSupportedExtension(extension) && !hasPlugin) {
+        var filename = path.split('\\').pop().split('/').pop();
+        window.parent.mantle_showPluginError(filename);
+        return;
+    }
 
     // force to open pdf files in another window due to issues with pdf readers in IE browsers
     // via class added on themeResources for IE browsers
@@ -123,7 +129,7 @@ define([
   }
 
   function initFavoritesAndRecents(config) {
-    pen.require(["home/FavoritesController"], function (FavoritesController) {
+    require(["home/FavoritesController"], function (FavoritesController) {
       controller = new FavoritesController(config);
     });
   }

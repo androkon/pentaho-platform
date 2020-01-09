@@ -53,9 +53,9 @@
 // For consistency, we're using the same method as PentahoWebContextFilter to get scheme
 if ( PentahoSystem.getApplicationContext().getFullyQualifiedServerURL().toLowerCase().startsWith( "https:" ) ) {
 %>
-  <script language='JavaScript' type='text/javascript' src='https://sadmin.brightcove.com/js/BrightcoveExperiences.js'></script>
+  <script src="https://players.brightcove.net/3971130171001/gsLYDENnF_default/index.min.js"></script>
 <% } else { %>
-  <script language='JavaScript' type='text/javascript' src='http://admin.brightcove.com/js/BrightcoveExperiences.js'></script>
+  <script src="http://players.brightcove.net/3971130171001/gsLYDENnF_default/index.min.js"></script>
 <% } %>
 
 
@@ -202,7 +202,7 @@ if ( PentahoSystem.getApplicationContext().getFullyQualifiedServerURL().toLowerC
                           {{#if html}} <i class="pull-left content-icon file-html"/> {{/if}}
                           {{#if cda}} <i class="pull-left content-icon file-cda"/> {{/if}}
                           {{#if wcdf}} <i class="pull-left content-icon file-wcdf"/> {{/if}}
-                          {{#if unknownType}} <i class="pull-left content-icon file-unknown"/> {{/if}}
+                          {{#if unknownType}} <i class="pull-left content-icon file-unknown {{extensionCssClass}}"/> {{/if}}
                           <span class="pad-left">{{title}}</span>
                         </div>
                         <div class="span2">
@@ -264,7 +264,7 @@ if ( PentahoSystem.getApplicationContext().getFullyQualifiedServerURL().toLowerC
                           {{#if xaction}} <i class="pull-left content-icon file-xaction"/> {{/if}}
                           {{#if url}} <i class="pull-left content-icon file-url"/> {{/if}}
                           {{#if html}} <i class="pull-left content-icon file-html"/> {{/if}}
-                          {{#if unknownType}} <i class="pull-left content-icon file-unknown"/> {{/if}}
+                          {{#if unknownType}} <i class="pull-left content-icon file-unknown {{extensionCssClass}}"/> {{/if}}
                           <span class="pad-left">{{title}}</span>
                         </div>
                         <div class="span2">

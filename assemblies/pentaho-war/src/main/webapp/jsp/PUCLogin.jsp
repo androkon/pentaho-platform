@@ -12,7 +12,7 @@
 * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 * See the GNU Lesser General Public License for more details.
 *
-* Copyright (c) 2002-2017 Hitachi Vantara..  All rights reserved.
+* Copyright (c) 2002-2019 Hitachi Vantara..  All rights reserved.
 --%>
 
 <%@ taglib prefix='c' uri='http://java.sun.com/jstl/core'%>
@@ -78,7 +78,6 @@
     }
   }
 
-
   boolean loggedIn = request.getRemoteUser() != null && request.getRemoteUser() != "";
   int year = (new java.util.Date()).getYear() + 1900;
 
@@ -98,8 +97,10 @@
       ua = "none";
     }
     if ( !"desktop".equalsIgnoreCase( request.getParameter( "mode") ) ) {
-      if ( ua.contains( "ipad" ) || ua.contains( "ipod" ) || ua.contains( "iphone" )
-           || ua.contains( "android" ) || "mobile".equalsIgnoreCase( request.getParameter( "mode" ) ) ) {
+      if ( ua.contains( "ipad" )   || ua.contains( "ipod" )    ||
+           ua.contains( "iphone" ) || ua.contains( "android" ) ||
+           "mobile".equalsIgnoreCase( request.getParameter( "mode" ) ) ) {
+
         IPluginManager pluginManager = PentahoSystem.get( IPluginManager.class, PentahoSessionHolder.getSession() );
         List<String> pluginIds = pluginManager.getRegisteredPlugins();
         for ( String id : pluginIds ) {
@@ -160,15 +161,6 @@
 <link rel="icon" type="image/png" sizes="16x16" href="/pentaho-style/favicon-16x16.png">
 <link rel="mask-icon" href="/pentaho-style/safari-pinned-tab.svg" color="#cc0000">
 
-<style type="text/css">
-  #login-background,
-  #loginError.pentaho-dialog,
-  #systemDown.pentaho-dialog,
-  #login-footer {
-    display: none;
-  }
-</style>
-
 <script language="javascript" type="text/javascript" src="webcontext.js"></script>
 <script type="text/javascript">
   var targetUrl = window.location.pathname.replace(new RegExp("(/){2,}"), "/");
@@ -181,113 +173,117 @@
 
 <body class="pentaho-page-background">
 <div id="login-wrapper">
-  <div id="login-background">
-    <div id="login-logo"></div>
-	
-	<script type="text/javascript">
-      if (window.active_theme === 'ruby') {
-		document.write('<div id="login-title"><%=Messages.getInstance().getString("UI.PUC.LOGIN.HEADER")%></div>');
-	  }	  
-	</script>
+  <div id="login-header-wrapper">
+    <div id="login-header-logo"></div>
+    <div id="login-header-separator-box">
+      <div id="login-header-separator"></div>
+      <div id="login-header-separator-padding"></div>
+    </div>
+    <div id="login-header-app-name"><%=Messages.getInstance().getString("UI.PUC.LOGIN.HEADER.APPNAME")%></div>
+  </div>
+  <div id="login-background-main">
+    <div id="login-background-opacity">
+      <div id="login-background">
 
-<% 
-		String cleanedLang = Encode.forHtmlAttribute(request.getLocale().toString());
-		if ( cleanedLang != null ) {
-			if ( cleanedLang.indexOf("_") > 0 ){
-				cleanedLang = cleanedLang.substring( 0, cleanedLang.indexOf("_") );
-			}
-		}
-%>
-    <div id="login-form-container" class="lang_<%=cleanedLang%>">
-      <div id="animate-wrapper">
-        <h1><%=Messages.getInstance().getString("UI.PUC.LOGIN.TITLE")%></h1>
-        <form name="login" id="login" action="j_spring_security_check" method="POST" onkeyup="if(window.event && window.event.keyCode && window.event.keyCode==13){var buttonToClick = document.getElementById('loginbtn'); if(buttonToClick){ buttonToClick.click();}}">
-          <div class="row-fluid nowrap">
-            <div class="input-container">
-              <label><%=Messages.getInstance().getString("UI.PUC.LOGIN.USERNAME")%></label>
-              <input id="j_username" name="j_username" type="text" placeholder="" autocomplete="off">
-            </div>
-            <div class="input-container">
-              <label><%=Messages.getInstance().getString("UI.PUC.LOGIN.PASSWORD")%></label>
-              <input id="j_password" name="j_password" type="password" placeholder="" autocomplete="off">
-            </div>
-            <div class="input-container">
-              <label>&nbsp;</label>
-              <button type="submit" id="loginbtn" class="btn"><%=Messages.getInstance().getString("UI.PUC.LOGIN.LOGIN")%></button>
-              <input type="hidden" name="locale" value="en_US">
+        <div id="login-title"><%=Messages.getInstance().getString("UI.PUC.LOGIN.WELCOME")%></div>
+        <div id="login-messages" class="none-login-message-visible">
+          <div id="loginError" class="login-error-message">
+            <div class="login-error-icon"></div>
+            <div class="login-error-text"><%=Messages.getInstance().getString("UI.PUC.LOGIN.ERROR")%></div>
+          </div>
+        </div>
+
+        <%
+          String cleanedLang = Encode.forHtmlAttribute(request.getLocale().toString());
+          if ( cleanedLang != null ) {
+            if ( cleanedLang.indexOf("_") > 0 ){
+              cleanedLang = cleanedLang.substring( 0, cleanedLang.indexOf("_") );
+            }
+          }
+        %>
+        <div id="login-form-container" class="lang_<%=cleanedLang%>">
+          <div id="animate-wrapper">
+            <h1><%=Messages.getInstance().getString("UI.PUC.LOGIN.TITLE")%></h1>
+            <form name="login" id="login" action="j_spring_security_check" method="POST"
+                  onkeyup="if(window.event && window.event.keyCode && window.event.keyCode==13){var buttonToClick = document.getElementById('loginbtn'); if(buttonToClick){ buttonToClick.click();}}">
+              <div class="row-fluid nowrap">
+                <div class="space-10"></div>
+                <div class="input-container">
+                  <label><%=Messages.getInstance().getString("UI.PUC.LOGIN.USERNAME")%></label>
+                  <input id="j_username" name="j_username" type="text" placeholder="" autocomplete="off">
+                </div>
+                <div class="space-30"></div>
+                <div class="input-container">
+                  <label><%=Messages.getInstance().getString("UI.PUC.LOGIN.PASSWORD")%></label>
+                  <input id="j_password" name="j_password" type="password"
+                         placeholder=""
+                         autocomplete="off">
+                </div>
+                <div class="space-60"></div>
+                <div class="input-container">
+                  <button type="submit" id="loginbtn" class="btn"><%=Messages.getInstance().getString("UI.PUC.LOGIN.LOGIN")%></button>
+                </div>
+                <div class="space-60"></div>
+              </div>
+              <div class="space-60"></div>
+              <div id="eval-users-toggle-container">
+                <%
+                  if (showUsers) {
+                %>
+                <div id="eval-users-toggle" onClick="toggleEvalPanel()">
+                  <div><%=Messages.getInstance().getString("UI.PUC.LOGIN.EVAL_LOGIN")%></div>
+                  <div id="eval-arrow" class="closed"></div>
+                </div>
+
+                <%
+                } else {
+                %>
+                &nbsp;
+                <%
+                  }
+                %>
+              </div>
+            </form>
+          </div>
+
+          <div class="row-fluid">
+            <div id="evaluationPanel" class="span10 row-fluid">
+              <div id="role-admin-panel" class="span6 well">
+                <div class="login-role"><%=Messages.getInstance().getString("UI.PUC.LOGIN.ADMIN_USER")%></div>
+                <div class="row-fluid">
+                  <div class="span6 login-label"><%=Messages.getInstance().getString("UI.PUC.LOGIN.USERNAME")%></div>
+                  <div class="span6 login-value">Admin</div>
+                </div>
+                <div class="row-fluid">
+                  <div class="span6 login-label"><%=Messages.getInstance().getString("UI.PUC.LOGIN.PASSWORD")%></div>
+                  <div class="span6 login-value">password</div>
+                </div>
+                <button class="btn" onClick="loginAs('Admin', 'password');"><%=Messages.getInstance().getString("UI.PUC.LOGIN.LOGIN")%></button>
+              </div>
+              <div id="role-business-user-panel" class="span6 well">
+                <div class="login-role"><%=Messages.getInstance().getString("UI.PUC.LOGIN.BUSINESS_USER")%></div>
+                <div class="row-fluid">
+                  <div class="span6 login-label"><%=Messages.getInstance().getString("UI.PUC.LOGIN.USERNAME")%></div>
+                  <div class="span6 login-value">Suzy</div>
+                </div>
+                <div class="row-fluid">
+                  <div class="span6 login-label"><%=Messages.getInstance().getString("UI.PUC.LOGIN.PASSWORD")%></div>
+                  <div class="span6 login-value">password</div>
+                </div>
+                <button class="btn" onClick="loginAs('Suzy', 'password');"><%=Messages.getInstance().getString("UI.PUC.LOGIN.LOGIN")%></button>
+              </div>
             </div>
           </div>
-          <div id="eval-users-toggle-container">
-            <%
-              if (showUsers) {
-            %>
-            <div id="eval-users-toggle" onClick="toggleEvalPanel()">
-              <div><%=Messages.getInstance().getString("UI.PUC.LOGIN.EVAL_LOGIN")%></div>
-                <div id="eval-arrow" class="closed"></div>
-            </div>
 
-            <%
-            } else {
-            %>
-            &nbsp;
-            <%
-              }
-            %>
-          </div>
-        </form>
-      </div>
+          <div class="space-30"></div>
 
-      <div class="row-fluid">
-        <div id="evaluationPanel" class="span10 row-fluid">
-          <div id="role-admin-panel" class="span6 well">
-            <div class="login-role"><%=Messages.getInstance().getString("UI.PUC.LOGIN.ADMIN_USER")%></div>
-            <div class="row-fluid">
-              <div class="span6 login-label"><%=Messages.getInstance().getString("UI.PUC.LOGIN.USERNAME")%></div>
-              <div class="span6 login-value">Admin</div>
-            </div>
-            <div class="row-fluid">
-              <div class="span6 login-label"><%=Messages.getInstance().getString("UI.PUC.LOGIN.PASSWORD")%></div>
-              <div class="span6 login-value">password</div>
-            </div>
-            <button class="btn" onClick="loginAs('Admin', 'password');"><%=Messages.getInstance().getString("UI.PUC.LOGIN.GO")%></button>
-          </div>
-          <div id="role-business-user-panel" class="span6 well ">
-            <div class="login-role"><%=Messages.getInstance().getString("UI.PUC.LOGIN.BUSINESS_USER")%></div>
-            <div class="row-fluid">
-              <div class="span6 login-label"><%=Messages.getInstance().getString("UI.PUC.LOGIN.USERNAME")%></div>
-              <div class="span6 login-value">Suzy</div>
-            </div>
-            <div class="row-fluid">
-              <div class="span6 login-label"><%=Messages.getInstance().getString("UI.PUC.LOGIN.PASSWORD")%></div>
-              <div class="span6 login-value">password</div>
-            </div>
-            <button class="btn" onClick="loginAs('Suzy', 'password');"><%=Messages.getInstance().getString("UI.PUC.LOGIN.GO")%></button>
         </div>
       </div>
-      </div>
-
     </div>
   </div>
   <div id="login-footer-wrapper">
-    <div id="login-footer" class="beforeSlide"><%=Messages.getInstance().getString("UI.PUC.LOGIN.COPYRIGHT", String.valueOf(year))%></div>
-  </div>
-</div>
-
-<div id="loginError" class="pentaho-dialog">
-  <div class="dialogTopCenterInner">
-    <div class="Caption">
-      <%=Messages.getInstance().getString("UI.PUC.LOGIN.ERROR.CAPTION")%>
-    </div>
-  </div>
-  <div class="dialogMiddleCenterInner">
-    <div class="dialog-content pentaho-padding-sm">
-      <%=Messages.getInstance().getString("UI.PUC.LOGIN.ERROR")%>
-    </div>
-  </div>
-  <div class="dialogMBottomCenterInner">
-    <div class="button-panel">
-      <button class="btn pull-right" onclick="document.getElementById('loginError').style.display='none'"><%=Messages.getInstance().getString("UI.PUC.LOGIN.OK")%></button>
-    </div>
+    <div id="login-footer-company"><%=Messages.getInstance().getString("UI.PUC.LOGIN.FOOTER.COMPANY")%></div>
+    <div id="login-footer-copyright"><%=Messages.getInstance().getString("UI.PUC.LOGIN.COPYRIGHT", String.valueOf(year))%></div>
   </div>
 </div>
 
@@ -307,15 +303,12 @@
   %>
 
   function bounceToReturnLocation() {
-    // pass
-    var locale = document.login.locale.value;
-
     var returnLocation = '<%=Encode.forJavaScript(requestedURL)%>';
 
     if (returnLocation != '' && returnLocation != null) {
       window.location.href = returnLocation;
     } else {
-      window.location.href = window.location.href.replace("Login", "Home") + "?locale=" + locale;
+      window.location.href = window.location.href.replace("Login", "Home");
     }
 
   }
@@ -353,15 +346,13 @@
           return;
         }
         // fail
-        $("#loginError").show();
-        $("#loginError button").focus();
+        showOneErrorMessage('loginError');
       },
 
       success:function(data, textStatus, jqXHR){
         if (data.indexOf("j_spring_security_check") != -1) {
           // fail
-          $("#loginError").show();
-          $("#loginError button").focus();
+          showOneErrorMessage('loginError');
           return false;
         } else {
           document.getElementById("j_password").value = "";
@@ -370,6 +361,27 @@
       }
     });
     return false;
+  }
+
+  function showOneErrorMessage(divId) {
+    var msgs = document.getElementsByClassName('login-error-message');
+    var isSomeMessageVisible = false;
+    if(msgs && msgs.length > 0) {
+      for (var i = 0; i < msgs.length; i++) {
+        if(msgs[i].id === divId) {
+          msgs[i].style.display='inline-flex';
+          isSomeMessageVisible = true;
+        } else {
+          msgs[i].style.display='none';
+        }
+      }
+    }
+
+    if(isSomeMessageVisible){
+      document.getElementById('login-messages').className='some-login-message-visible';
+    } else {
+      document.getElementById('login-messages').className='none-login-message-visible';
+    }
   }
 
   function loginAs (username, password) {
@@ -387,13 +399,8 @@
 
 
     $("#login-background").fadeIn(1000, function() {
-      $("#login-logo").addClass("afterSlide");
-
       $("#animate-wrapper").addClass("afterSlide");
       $("#j_username").focus();
-
-      $("#login-footer").addClass("afterSlide");
-
     });
 
 
